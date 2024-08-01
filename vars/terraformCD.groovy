@@ -42,9 +42,9 @@ def call(Map config = [:]) {
                 steps {
                     script {
                         if (params.ACTION == 'apply') {
-                            org.foo.TerraformUtils.apply(this)
+                            example.terraform.TerraformUtils.apply(this)
                         } else if (params.ACTION == 'destroy') {
-                            org.foo.TerraformUtils.destroy(this)
+                            example.terraform.TerraformUtils.destroy(this)
                         }
                     }
                 }
