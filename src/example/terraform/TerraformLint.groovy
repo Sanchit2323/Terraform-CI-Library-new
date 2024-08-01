@@ -1,4 +1,4 @@
-package org.example.terraform
+package example.terraform
 
 class TerraformLint {
     static void run(String tflintPath) {
