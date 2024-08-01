@@ -5,6 +5,7 @@ class CheckovScan {
 
     CheckovScan(script) {
         this.script = script
+        this.workspace = workspace
     }
 
     void run(String checkovPath, String workspace) {
