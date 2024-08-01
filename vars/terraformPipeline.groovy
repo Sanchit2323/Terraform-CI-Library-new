@@ -6,7 +6,7 @@ import example.terraform.CheckovScan
 import example.terraform.ArchiveReports
 
 def call(Map params) {
-    def REPO_URL = "https://github.com/Sanchit2323/Terraform-CI-Library-new.git"
+    def REPO_URL = "https://github.com/Sanchit2323/Terra-module-CI.git"
     
     pipeline {
         agent any
