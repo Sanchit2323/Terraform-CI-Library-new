@@ -15,6 +15,7 @@ def call(Map params) {
                 steps {
                     script {
                         git url: "${params.REPO_URL}", branch: 'main'
+                    }
                 }
             }
             stage('Terraform Init') {
