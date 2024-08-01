@@ -40,7 +40,8 @@ def call(Map params) {
             stage('Terraform Format') {
                 steps {
                     script {
-                        TerraformFormat.run(message: "Formatting Terraform files")
+                        def terraformFormat = new TerraformFormat(this)
+                        terraformFormat.run()
                     }
                 }
             }
