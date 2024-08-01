@@ -31,7 +31,7 @@ def call(Map params) {
             stage('Terraform Init') {
                 steps {
                     script {
-                        TerraformInit.run(message: "Initializing Terraform")
+                        TerraformInit.run([message: "Initializing Terraform"])
                     }
                 }
             }
