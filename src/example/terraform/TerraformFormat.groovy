@@ -1,4 +1,4 @@
-package org.example.terraform
+package example.terraform
 
 class TerraformFormat {
     static void run() {
