@@ -1,7 +1,14 @@
 package example.terraform
 
 class TerraformInit {
-    static void run(Map params) {
-        sh 'terraform init'
+    def script
+
+    TerraformInit(script) {
+        this.script = script
+    }
+
+    void run(Map params) {
+        script.sh "echo ${params.message ?: 'Running Terraform Init'}"
+        script.sh 'terraform init'
     }
 }
