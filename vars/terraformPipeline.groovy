@@ -57,7 +57,8 @@ def call(Map params) {
             stage('Terraform Lint') {
                 steps {
                     script {
-                        TerraformLint.run(TFLINT_PATH, message: "Linting Terraform files")
+                        def terraformLint = new TerraformLint(this)
+                        terraformLint.run("${env.TFLINT_PATH}") // Using the CHECKOV_PATH environment variable
                     }
                 }
             }
