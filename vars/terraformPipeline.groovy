@@ -31,10 +31,11 @@ def call(Map params) {
             stage('Terraform Init') {
                 steps {
                     script {
-                        TerraformInit.run(message: "Initializing Terraform")
+                        TerraformInit.run(message: "Initializing Terraform", echo: echo)
                     }
                 }
             }
+
             stage('Terraform Format') {
                 steps {
                     script {
