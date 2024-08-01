@@ -2,13 +2,14 @@ package example.terraform
 
 class CheckovScan {
     def script
+    String workspace
 
-    CheckovScan(script) {
+    CheckovScan(script, String workspace) {
         this.script = script
         this.workspace = workspace
     }
 
-    void run(String checkovPath, String workspace) {
+    void run(String checkovPath) {
         script.catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
             script.sh """
                 cd ${workspace}
@@ -18,4 +19,3 @@ class CheckovScan {
         }
     }
 }
-
