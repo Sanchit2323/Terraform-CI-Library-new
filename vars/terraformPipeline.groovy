@@ -48,10 +48,12 @@ def call(Map params) {
             stage('Terraform Validate') {
                 steps {
                     script {
-                        TerraformValidate.run(message: "Validating Terraform files")
+                        def terraformValidate = new TerraformValidate(this)
+                        terraformValidate.run()
                     }
                 }
             }
+
             stage('Terraform Lint') {
                 steps {
                     script {
