@@ -65,7 +65,8 @@ def call(Map params) {
             stage('Checkov Scan') {
                 steps {
                     script {
-                        CheckovScan.run(CHECKOV_PATH, env.WORKSPACE, message: "Running Checkov scan")
+                        def checkovScan = new CheckovScan(this, env.WORKSPACE) // Use the predefined workspace
+                        checkovScan.run(CHECKOV_PATH)
                     }
                 }
             }
