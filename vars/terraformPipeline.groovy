@@ -1,9 +1,9 @@
-import org.example.terraform.TerraformInit
-import org.example.terraform.TerraformFormat
-import org.example.terraform.TerraformValidate
-import org.example.terraform.TerraformLint
-import org.example.terraform.CheckovScan
-import org.example.terraform.ArchiveReports
+import example.terraform.TerraformInit
+import example.terraform.TerraformFormat
+import example.terraform.TerraformValidate
+import example.terraform.TerraformLint
+import example.terraform.CheckovScan
+import example.terraform.ArchiveReports
 
 def call(Map params) {
     pipeline {
