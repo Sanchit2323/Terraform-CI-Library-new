@@ -73,7 +73,7 @@ def call(Map params) {
             stage('Archive Reports') {
                 steps {
                     script {
-                        ArchiveReports.run(message: "Archiving reports")
+                        ArchiveReports.run(this) // Pass the script context
                     }
                 }
             }
