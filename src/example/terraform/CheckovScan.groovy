@@ -1,4 +1,4 @@
-package org.example.terraform
+package example.terraform
 
 class CheckovScan {
     static void run(String checkovPath, String workspace) {
