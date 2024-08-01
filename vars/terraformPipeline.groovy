@@ -6,19 +6,26 @@ import example.terraform.CheckovScan
 import example.terraform.ArchiveReports
 
 def call(Map params) {
+    def REPO_URL = "https://github.com/Sanchit2323/Terraform-CI-Library-new.git"
+    
     pipeline {
         agent any
         environment {
             CHECKOV_PATH = '/var/lib/jenkins/.local/bin'
             TFLINT_PATH = '/usr/local/bin/tflint' // Adjust the path if tflint is installed elsewhere
+            REPO_URL = "${REPO_URL}"
         }
-        parameters {
-            string(name: 'REPO_URL', defaultValue: 'https://github.com/Sanchit2323/Terraform-CI.git', description: 'GitHub repository URL')
-        }
+
         stages {
             stage('Checkout') {
                 steps {
-                    git url: "${params.REPO_URL}", branch: 'main'
+                    script {
+                        // Log the REPO_URL for debugging
+                        echo "Checking out repository: ${REPO_URL}"
+                        
+                        // Checkout the repository
+                        git url: "${REPO_URL}", branch: 'main'
+                    }
                 }
             }
             stage('Terraform Init') {
