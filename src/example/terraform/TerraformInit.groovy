@@ -1,10 +1,9 @@
 package example.terraform
 
 class TerraformInit {
-    static void run(Map params, Closure command) {
-        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+    static void run(Map params) {
+            // Log the message passed from the pipeline
             echo params.message ?: "Running Terraform Init"
-            command()
+            sh 'terraform init'
         }
     }
-}
