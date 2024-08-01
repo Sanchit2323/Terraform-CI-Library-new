@@ -3,7 +3,7 @@ def call(Map config = [:]) {
         agent any
 
         parameters {
-            string(name: 'REPO_URL', defaultValue: 'https://github.com/cdivyanshu/my-shared-library.git', description: 'GitHub repository URL')
+            string(name: 'REPO_URL', defaultValue: 'https://github.com/Sanchit2323/Terra-module-CI.git', description: 'GitHub repository URL')
             string(name: 'AWS_ACCESS_KEY_ID', defaultValue: 'aws-access-key-id', description: 'AWS Access Key ID')
             string(name: 'AWS_SECRET_ACCESS_KEY', defaultValue: 'aws-secret-access-key', description: 'AWS Secret Access Key')
             choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Choose Terraform action to perform')
