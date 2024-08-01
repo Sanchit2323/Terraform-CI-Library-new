@@ -16,6 +16,14 @@ def call(Map params) {
             string(name: 'REPO_URL', defaultValue: 'https://github.com/Sanchit2323/Terraform-CI.git', description: 'GitHub repository URL')
         }
         stages {
+            stage('Preparation') {
+                steps {
+                    script {
+                        def REPO_URL = env.REPO_URL ?: 'https://default-repo-url.com'
+                        echo "Repository URL: ${REPO_URL}"
+                    }
+                }
+            }
             stage('Checkout') {
                 steps {
                     script {
