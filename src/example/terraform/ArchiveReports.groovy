@@ -1,4 +1,4 @@
-package org.example.terraform
+package example.terraform
 
 class ArchiveReports {
     static void run() {
