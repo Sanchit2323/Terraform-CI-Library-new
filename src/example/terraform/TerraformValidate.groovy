@@ -1,9 +1,16 @@
 package example.terraform
 
 class TerraformValidate {
-    static void run() {
-        catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-            sh 'terraform validate > terraform_validate_report.txt'
+    def script
+
+    TerraformValidate(script) {
+        this.script = script
+    }
+
+    void run() {
+        script.catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+            script.sh 'terraform validate > terraform_validate_report.txt'
         }
     }
 }
+
