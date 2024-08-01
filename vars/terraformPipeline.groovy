@@ -13,44 +13,51 @@ def call(Map params) {
         stages {
             stage('Checkout') {
                 steps {
-                    git url: "${params.REPO_URL}", branch: 'main'
+                    script {
+                        git url: "${params.REPO_URL}", branch: 'main'
                 }
             }
             stage('Terraform Init') {
                 steps {
-                    TerraformInit.run()
+                    script {
+                        TerraformInit.run(message: "Initializing Terraform")
+                    }
                 }
             }
             stage('Terraform Format') {
                 steps {
-                    TerraformFormat.run()
+                    script {
+                        TerraformFormat.run(message: "Formatting Terraform files")
+                    }
                 }
             }
             stage('Terraform Validate') {
                 steps {
-                    TerraformValidate.run()
+                    script {
+                        TerraformValidate.run(message: "Validating Terraform files")
+                    }
                 }
             }
             stage('Terraform Lint') {
                 steps {
-                    TerraformLint.run(TFLINT_PATH)
+                    script {
+                        TerraformLint.run(TFLINT_PATH, message: "Linting Terraform files")
+                    }
                 }
             }
             stage('Checkov Scan') {
                 steps {
-                    CheckovScan.run(CHECKOV_PATH, env.WORKSPACE)
+                    script {
+                        CheckovScan.run(CHECKOV_PATH, env.WORKSPACE, message: "Running Checkov scan")
+                    }
                 }
             }
             stage('Archive Reports') {
                 steps {
-                    ArchiveReports.run()
+                    script {
+                        ArchiveReports.run(message: "Archiving reports")
+                    }
                 }
-            }
-        }
-        post {
-            always {
-                cleanWs()
-                echo 'Pipeline completed'
             }
         }
     }
