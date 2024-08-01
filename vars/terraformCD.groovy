@@ -4,6 +4,8 @@ def call(Map config = [:]) {
 
         parameters {
             string(name: 'REPO_URL', defaultValue: 'https://github.com/cdivyanshu/my-shared-library.git', description: 'GitHub repository URL')
+            string(name: 'AWS_ACCESS_KEY_ID', defaultValue: 'aws-jenkins-demo-access-key', description: 'AWS Access Key ID')
+            string(name: 'AWS_SECRET_ACCESS_KEY', defaultValue: 'aws-jenkins-demo-secret-key', description: 'AWS Secret Access Key')
             choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Choose Terraform action to perform')
         }
 
