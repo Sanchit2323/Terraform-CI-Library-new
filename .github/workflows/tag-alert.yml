@@ -1,0 +1,53 @@
+name: Tag Alert
+
+on:
+  push:
+    tags: # Triggers only on tag creation
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository to get branch/tag information
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      # Determine the branch from which the tag was created
+      - name: Check Base Branch
+        id: check_branch
+        run: |
+          echo "Checking tag source..."
+          git log -1 --pretty=%D > tag_details.txt
+          cat tag_details.txt
+          if grep -q "origin/master" tag_details.txt; then
+            echo "base_branch=master" >> $GITHUB_ENV
+          else
+            echo "base_branch=$(git log -1 --pretty=%D | grep 'origin/' | awk -F'/' '{print $NF}')" >> $GITHUB_ENV
+          fi
+
+      # If tag not created from master, send alert
+      - name: Send Notifications
+        if: env.base_branch != 'master'
+        run: echo "Base branch: ${{ env.base_branch }} was used instead of master. Triggering alert."
+
+      - name: Notify Slack
+        if: env.base_branch != 'master'
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Tag created from non-master branch. Base branch: '${{ env.base_branch }}'"}' $SLACK_WEBHOOK_URL
+
+      - name: Send Email Notification
+        if: env.base_branch != 'master'
+        env:
+          EMAIL_TO: ${{ secrets.ALERT_EMAIL }}
+          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
+          MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
+        run: |
+          curl -s --user "api:${{ env.MAILGUN_API_KEY }}" \
+          https://api.mailgun.net/v3/${{ env.MAILGUN_DOMAIN }}/messages \
+          -F from='Tag Alert <alert@yourdomain.com>' \
+          -F to='${{ env.EMAIL_TO }}' \
+          -F subject='GitHub Tag Alert' \
+          -F text='A tag was created from non-master branch: '${{ env.base_branch }}''
