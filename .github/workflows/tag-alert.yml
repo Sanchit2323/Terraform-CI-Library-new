@@ -1,53 +1,52 @@
-name: Tag Alert
+name: Notify on Tag from Non-Master Branch
 
 on:
-  push:
-    tags: # Triggers only on tag creation
+  create:
+    tags:    # Trigger only for tag creation events.
 
 jobs:
-  notify:
+  check-tag:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the repository to get branch/tag information
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
-      # Determine the branch from which the tag was created
-      - name: Check Base Branch
-        id: check_branch
+      - name: Check Branch
         run: |
-          echo "Checking tag source..."
-          git log -1 --pretty=%D > tag_details.txt
-          cat tag_details.txt
-          if grep -q "origin/master" tag_details.txt; then
-            echo "base_branch=master" >> $GITHUB_ENV
+          TAG_COMMIT_SHA=$(git rev-parse ${{ github.event.ref }})
+          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'master')
+          
+          if [[ -z "$BASE_BRANCH" ]]; then
+            echo "Tag is from master. No alert needed."
+            exit 0
           else
-            echo "base_branch=$(git log -1 --pretty=%D | grep 'origin/' | awk -F'/' '{print $NF}')" >> $GITHUB_ENV
+            echo "Tag from $BASE_BRANCH."
+            echo "$BASE_BRANCH" > branch.txt
           fi
+        shell: bash
 
-      # If tag not created from master, send alert
-      - name: Send Notifications
-        if: env.base_branch != 'master'
-        run: echo "Base branch: ${{ env.base_branch }} was used instead of master. Triggering alert."
-
-      - name: Notify Slack
-        if: env.base_branch != 'master'
+      - name: Send Slack Notification
+        if: success()
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
         run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"Tag created from non-master branch. Base branch: '${{ env.base_branch }}'"}' $SLACK_WEBHOOK_URL
+          BRANCH=$(cat branch.txt)
+          curl -X POST -H 'Content-type: application/json' --data '{
+            "text": "⚠️ Alert: Tag created on branch `$BRANCH` instead of master!"
+          }' $SLACK_WEBHOOK_URL
 
       - name: Send Email Notification
-        if: env.base_branch != 'master'
-        env:
-          EMAIL_TO: ${{ secrets.ALERT_EMAIL }}
-          MAILGUN_API_KEY: ${{ secrets.MAILGUN_API_KEY }}
-          MAILGUN_DOMAIN: ${{ secrets.MAILGUN_DOMAIN }}
-        run: |
-          curl -s --user "api:${{ env.MAILGUN_API_KEY }}" \
-          https://api.mailgun.net/v3/${{ env.MAILGUN_DOMAIN }}/messages \
-          -F from='Tag Alert <alert@yourdomain.com>' \
-          -F to='${{ env.EMAIL_TO }}' \
-          -F subject='GitHub Tag Alert' \
-          -F text='A tag was created from non-master branch: '${{ env.base_branch }}''
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.example.com   # SMTP server address
+          server_port: 587                   # SMTP port
+          username: ${{ secrets.SMTP_USER }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: 'GitHub Alert: Tag Creation from Non-Master Branch'
+          to: 'admin@example.com'
+          from: 'noreply@example.com'
+          body: |
+            A new tag has been created on a branch other than master.
+            Branch Name: $(cat branch.txt)
