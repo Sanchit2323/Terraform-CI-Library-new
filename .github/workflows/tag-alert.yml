@@ -1,74 +1,52 @@
-name: Notify on Tag from Non-Master Branch
+name: Tag Alert
 
 on:
-  create:
-    tags: # Trigger only for tag creation events.
+  push:
+    tags:
+      - "*"
 
 jobs:
-  check-tag:
+  tag-alert:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the code with full history
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Fetch the full commit history
 
-      # Step 2: Determine the branch for the tag
-      - name: Check Branch
+      - name: Extract the tag name
+        id: extract-tag
         run: |
-HEAD
           # Extract the tag name from the GitHub context
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "Tag Name: $TAG_NAME"
+          echo "tag_name=$TAG_NAME" >> $GITHUB_ENV
 
-          # Get the commit SHA for the tag
-          TAG_COMMIT_SHA=$(git rev-parse $TAG_NAME 2>/dev/null)
+      - name: Get tag commit SHA
+        id: tag-commit-sha
+        run: |
+          TAG_NAME=$TAG_NAME
+          TAG_COMMIT_SHA=$(git rev-list -n 1 $TAG_NAME)
           if [[ -z "$TAG_COMMIT_SHA" ]]; then
             echo "Error: Failed to resolve tag commit SHA for $TAG_NAME."
             exit 1
           fi
           echo "Tag Commit SHA: $TAG_COMMIT_SHA"
+          echo "tag_commit_sha=$TAG_COMMIT_SHA" >> $GITHUB_ENV
 
-          # Find the branch containing the tag commit (excluding master)
-          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'master' | xargs)
-          TAG_COMMIT_SHA=$(git rev-parse ${{ github.event.ref }})
-          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'main')
-          
-e136547ade4e8b835b89f68552ce4b1d2c6254a9
+      - name: Find the branch containing the tag commit
+        id: find-branch
+        run: |
+          TAG_COMMIT_SHA=$TAG_COMMIT_SHA
+          BASE_BRANCH=$(git branch -r --contains $TAG_COMMIT_SHA | grep -v '->' | grep -v '/master' | xargs || true)
           if [[ -z "$BASE_BRANCH" ]]; then
-            echo "No branch contains the tag commit, or it's on master. No alert needed."
+            echo "No branch contains the tag commit, or it's on the master/main branch. No alert needed."
             exit 0
           else
             echo "Tag is from branch: $BASE_BRANCH"
             echo "$BASE_BRANCH" > branch.txt
           fi
-        shell: bash
 
-      # Step 3: Send Slack Notification if the tag is from a non-master branch
-      - name: Send Slack Notification
-        if: success()
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-        run: |
-          BRANCH=$(cat branch.txt)
-          curl -X POST -H 'Content-type: application/json' --data '{
-            "text": "⚠️ Alert: Tag created on branch `'$BRANCH'` instead of master!"
-          }' $SLACK_WEBHOOK_URL
-
-      # Step 4: Send Email Notification
-      - name: Send Email Notification
-        if: success()
-        uses: dawidd6/action-send-mail@v3
+      - name: Upload branch information
+        uses: actions/upload-artifact@v3
         with:
-          server_address: smtp.example.com   # SMTP server address
-          server_port: 587                   # SMTP port
-          username: ${{ secrets.SMTP_USER }}
-          password: ${{ secrets.SMTP_PASSWORD }}
-          subject: 'GitHub Alert: Tag Creation from Non-Master Branch'
-          to: 'admin@example.com'
-          from: 'noreply@example.com'
-          body: |
-            A new tag has been created on a branch other than master.
-            Branch Name: $(cat branch.txt)
+          name: branch-info
+          path: branch.txt
