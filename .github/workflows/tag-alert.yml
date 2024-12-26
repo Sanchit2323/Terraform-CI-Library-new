@@ -15,7 +15,7 @@ jobs:
       - name: Check Branch
         run: |
           TAG_COMMIT_SHA=$(git rev-parse ${{ github.event.ref }})
-          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'master')
+          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'main')
           
           if [[ -z "$BASE_BRANCH" ]]; then
             echo "Tag is from master. No alert needed."
