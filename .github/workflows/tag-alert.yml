@@ -18,6 +18,7 @@ jobs:
       # Step 2: Determine the branch for the tag
       - name: Check Branch
         run: |
+HEAD
           # Extract the tag name from the GitHub context
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "Tag Name: $TAG_NAME"
@@ -32,6 +33,10 @@ jobs:
 
           # Find the branch containing the tag commit (excluding master)
           BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'master' | xargs)
+          TAG_COMMIT_SHA=$(git rev-parse ${{ github.event.ref }})
+          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'main')
+          
+e136547ade4e8b835b89f68552ce4b1d2c6254a9
           if [[ -z "$BASE_BRANCH" ]]; then
             echo "No branch contains the tag commit, or it's on master. No alert needed."
             exit 0
