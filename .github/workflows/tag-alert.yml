@@ -12,28 +12,10 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Extract the tag name
+      - name: Extract the Tag Name
         id: extract-tag
         run: |
           # Extract the tag name from the GitHub context
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "Tag Name: $TAG_NAME"
-          echo "tag_name=$TAG_NAME" >> $GITHUB_ENV
-
-      - name: Get tag commit SHA
-        id: tag-commit-sha
-        run: |
-          TAG_NAME=$TAG_NAME
-          TAG_COMMIT_SHA=$(git rev-list -n 1 $TAG_NAME)
-          if [[ -z "$TAG_COMMIT_SHA" ]]; then
-            echo "Error: Failed to resolve tag commit SHA for $TAG_NAME."
-            exit 1
-          fi
-          echo "Tag Commit SHA: $TAG_COMMIT_SHA"
-          echo "tag_commit_sha=$TAG_COMMIT_SHA" >> $GITHUB_ENV
-
-      - name: Find the branch containing the tag commit
-        id: find-branch
-        run: |
-          TAG_COMMIT_SHA=$TAG_COMMIT_SHA
-          BASE
+    
