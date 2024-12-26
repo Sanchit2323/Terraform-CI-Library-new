@@ -18,24 +18,25 @@ jobs:
       # Step 2: Determine the branch for the tag
       - name: Check Branch
         run: |
-          # Extract the tag name from GitHub context
+          # Extract the tag name from the GitHub context
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "Tag Name: $TAG_NAME"
 
           # Get the commit SHA for the tag
-          TAG_COMMIT_SHA=$(git rev-parse $TAG_NAME)
+          TAG_COMMIT_SHA=$(git rev-parse $TAG_NAME 2>/dev/null)
+          if [[ -z "$TAG_COMMIT_SHA" ]]; then
+            echo "Error: Failed to resolve tag commit SHA for $TAG_NAME."
+            exit 1
+          fi
           echo "Tag Commit SHA: $TAG_COMMIT_SHA"
 
-          # Determine which branch contains this commit (excluding master)
+          # Find the branch containing the tag commit (excluding master)
           BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | grep -v '\*' | grep -v 'master' | xargs)
-          echo "Base Branch: $BASE_BRANCH"
-
-          # If no branch is found, assume it's master or detached
           if [[ -z "$BASE_BRANCH" ]]; then
-            echo "Tag is from master or detached commit. No alert needed."
+            echo "No branch contains the tag commit, or it's on master. No alert needed."
             exit 0
           else
-            echo "Tag from $BASE_BRANCH."
+            echo "Tag is from branch: $BASE_BRANCH"
             echo "$BASE_BRANCH" > branch.txt
           fi
         shell: bash
