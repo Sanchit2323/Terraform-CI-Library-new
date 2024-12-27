@@ -15,12 +15,23 @@ jobs:
       - name: Get Tag and Branch Info
         id: tag-info
         run: |
-          # Get the current tag
-          echo "TAG_NAME=$(git tag --points-at HEAD)" >> $GITHUB_ENV
-          
-          # Find the branch from which the tag is created
-          BASE_BRANCH=$(git for-each-ref --format='%(refname:short)' $(git merge-base HEAD $(git rev-list --remotes --not --all | head -1)))
+          # Get the tag name from GitHub context
+          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+
+          # Find the commit that the tag points to
+          TAG_COMMIT_SHA=$(git rev-list -n 1 $TAG_NAME)
+          echo "TAG_COMMIT_SHA=$TAG_COMMIT_SHA" >> $GITHUB_ENV
+
+          # Determine the branch from which the tag was created
+          BASE_BRANCH=$(git branch -r --contains $TAG_COMMIT_SHA | grep -v '\->' | sed 's/origin\///g' | head -n 1)
           echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
+
+      - name: Display Tag and Branch Info
+        run: |
+          echo "Tag Name: $TAG_NAME"
+          echo "Tag Commit SHA: $TAG_COMMIT_SHA"
+          echo "Base Branch: $BASE_BRANCH"
+
 
       - name: Fail if base branch is not master
         if: env.BASE_BRANCH != 'master'
