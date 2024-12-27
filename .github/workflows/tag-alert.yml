@@ -1,4 +1,4 @@
-name: Tag Alert Mechanism
+name: Notify on Invalid Tag Creation
 
 on:
   push:
@@ -6,54 +6,64 @@ on:
       - "*"
 
 jobs:
-  check-tag-origin:
+  notify-tag-creation:
     runs-on: ubuntu-latest
     steps:
+      # Step 1: Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Get Tag and Branch Info
-        id: tag-info
+      # Step 2: Debug GITHUB_REF
+      - name: Debug GitHub Ref
+        run: echo "GITHUB_REF=${GITHUB_REF}"
+
+      # Step 3: Extract Tag Name
+      - name: Extract Tag Name
         run: |
-          # Get the tag name from GitHub context
-          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            TAG_NAME=${GITHUB_REF#refs/tags/}
+            echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+          else
+            echo "Error: GITHUB_REF does not contain a valid tag reference." >&2
+            exit 1
+          fi
 
-          # Find the commit that the tag points to
-          TAG_COMMIT_SHA=$(git rev-list -n 1 $TAG_NAME)
-          echo "TAG_COMMIT_SHA=$TAG_COMMIT_SHA" >> $GITHUB_ENV
+      # Step 4: Get Tag Commit SHA
+      - name: Get Tag Commit SHA
+        run: |
+          TAG_COMMIT_SHA=$(git rev-list -n 1 "${TAG_NAME}")
+          echo "TAG_COMMIT_SHA=${TAG_COMMIT_SHA}" >> $GITHUB_ENV
 
-          # Determine the branch from which the tag was created
-          BASE_BRANCH=$(git branch -r --contains $TAG_COMMIT_SHA | grep -v '\->' | sed 's/origin\///g' | head -n 1)
-          echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
+      # Step 5: Determine the Base Branch
+      - name: Get Base Branch
+        run: |
+          BASE_BRANCH=$(git branch -r --contains "${TAG_COMMIT_SHA}" | grep -v '\->' | sed 's/origin\///g' | head -n 1)
+          if [ -z "$BASE_BRANCH" ]; then
+            echo "Error: Unable to determine the base branch for tag ${TAG_NAME}." >&2
+            exit 1
+          fi
+          echo "BASE_BRANCH=${BASE_BRANCH}" >> $GITHUB_ENV
 
-      - name: Display Tag and Branch Info
+      # Step 6: Display Extracted Variables
+      - name: Display Extracted Variables
         run: |
           echo "Tag Name: $TAG_NAME"
           echo "Tag Commit SHA: $TAG_COMMIT_SHA"
           echo "Base Branch: $BASE_BRANCH"
 
-
-      - name: Fail if base branch is not master
+      # Step 7: Check if Base Branch is not 'master'
+      - name: Check Branch and Notify
         if: env.BASE_BRANCH != 'master'
-        run: echo "Tag created from branch: $BASE_BRANCH. Notifying stakeholders."
+        run: |
+          echo "Tag ${TAG_NAME} created from branch ${BASE_BRANCH}, which is not 'master'. Sending notifications."
 
-      - name: Notify on Slack
-        if: env.BASE_BRANCH != 'master'
-        uses: slackapi/slack-github-action@v1.25.0
-        with:
-          slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
-          channel-id: your-slack-channel-id
-          text: >
-            ⚠️ Tag `${{ env.TAG_NAME }}` created from branch `${{ env.BASE_BRANCH }}`, not master.
+          # Constructing a message for the notifications
+          MESSAGE="Tag '${TAG_NAME}' was created from branch '${BASE_BRANCH}', which is not the 'master' branch."
 
-      - name: Send Email Notification
-        if: env.BASE_BRANCH != 'master'
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 587
-          username: ${{ secrets.EMAIL_USER }}
-          password: ${{ secrets.EMAIL_PASS }}
-          subject: "GitHub Alert: Tag Created from Non-Master Branch"
-          body: "⚠️ A tag was created from branch '${{ env.BASE_BRANCH }}', which is not the 'master' branch."
-  
+          # Send Slack Notification
+          curl -X POST -H 'Content-type: application/json' \
+          --data '{"text":"'"${MESSAGE}"'"}' \
+          ${{ secrets.SLACK_WEBHOOK_URL }}
+
+          # Send Email Notification using GitHub Actions Secret for Email
+          echo "Subject: Tag Alert - Invalid Base Branch\n\n${MESSAGE}" | sendmail -v ${{ secrets.NOTIFY_EMAIL }}
