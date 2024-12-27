@@ -21,18 +21,16 @@ jobs:
           echo "Tag Name: ${GITHUB_REF#refs/tags/}"
           echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
 
-      # Step 3: Check the branch associated with the tag
-      - name: Get Commit Base Branch
-        id: base_branch
+      # Step 3: Get Branch Associated with the Commit of the Tag
+      - name: Check Branch for Tag Commit
+        id: check_branch
         run: |
           TAG_COMMIT_SHA=$(git rev-parse HEAD)
-          echo "TAG_COMMIT_SHA=$TAG_COMMIT_SHA" >> $GITHUB_ENV
-          
-          BASE_BRANCH=$(git branch --contains $TAG_COMMIT_SHA | sed -n -e 's/^\* \(.*\)/\1/p')
+          BASE_BRANCH=$(git branch -r --contains $TAG_COMMIT_SHA | grep -v 'HEAD' | sed 's/origin\///' | head -n 1)
           echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
-          echo "Base branch for the tag is $BASE_BRANCH"
+          echo "Base branch for the tag is: $BASE_BRANCH"
 
-      # Step 4: Send a Notification if Tag is Not Created from 'master'
+      # Step 4: Notify if Tag is Not Created from 'master'
       - name: Notify if Not master
         if: ${{ env.BASE_BRANCH != 'master' }}
         run: |
