@@ -6,64 +6,50 @@ on:
       - "*"
 
 jobs:
-  notify-tag-creation:
+  validate-tag:
     runs-on: ubuntu-latest
+
     steps:
       # Step 1: Checkout Repository
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Debug GITHUB_REF
-      - name: Debug GitHub Ref
-        run: echo "GITHUB_REF=${GITHUB_REF}"
-
-      # Step 3: Extract Tag Name
-      - name: Extract Tag Name
+      # Step 2: Extract Tag Name and Validate
+      - name: Get Tag Name and Validate Base Branch
+        id: validate_tag
         run: |
-          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
-            TAG_NAME=${GITHUB_REF#refs/tags/}
-            echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
-          else
-            echo "Error: GITHUB_REF does not contain a valid tag reference." >&2
-            exit 1
-          fi
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
 
-      # Step 4: Get Tag Commit SHA
-      - name: Get Tag Commit SHA
-        run: |
-          TAG_COMMIT_SHA=$(git rev-list -n 1 "${TAG_NAME}")
+          # Retrieve commit SHA for the tag
+          TAG_COMMIT_SHA=$(git rev-list -n 1 "$TAG_NAME")
           echo "TAG_COMMIT_SHA=${TAG_COMMIT_SHA}" >> $GITHUB_ENV
 
-      # Step 5: Determine the Base Branch
-      - name: Get Base Branch
-        run: |
-          BASE_BRANCH=$(git branch -r --contains "${TAG_COMMIT_SHA}" | grep -v '\->' | sed 's/origin\///g' | head -n 1)
-          if [ -z "$BASE_BRANCH" ]; then
-            echo "Error: Unable to determine the base branch for tag ${TAG_NAME}." >&2
-            exit 1
-          fi
+          # Determine the branch the tag commit belongs to
+          BASE_BRANCH=$(git branch -r --contains "${TAG_COMMIT_SHA}" | grep -v '->' | sed 's/origin\///' | head -n 1)
           echo "BASE_BRANCH=${BASE_BRANCH}" >> $GITHUB_ENV
 
-      # Step 6: Display Extracted Variables
-      - name: Display Extracted Variables
-        run: |
+          if [ -z "$BASE_BRANCH" ]; then
+            echo "Unable to determine the base branch. Exiting."
+            exit 1
+          fi
+
           echo "Tag Name: $TAG_NAME"
-          echo "Tag Commit SHA: $TAG_COMMIT_SHA"
+          echo "Commit SHA: $TAG_COMMIT_SHA"
           echo "Base Branch: $BASE_BRANCH"
 
-      # Step 7: Check if Base Branch is not 'master'
-      - name: Check Branch and Notify
+      # Step 3: Conditional Step for Notification if Not on Master
+      - name: Notify if Invalid Branch
         if: env.BASE_BRANCH != 'master'
         run: |
-          echo "Tag ${TAG_NAME} created from branch ${BASE_BRANCH}, which is not 'master'. Sending notifications."
+          MESSAGE="Alert: Tag '${{ env.TAG_NAME }}' created from branch '${{ env.BASE_BRANCH }}', which is not 'master'."
 
-          # Constructing a message for the notifications
-          MESSAGE="Tag '${TAG_NAME}' was created from branch '${BASE_BRANCH}', which is not the 'master' branch."
+          echo "$MESSAGE"
 
           # Send Slack Notification
           curl -X POST -H 'Content-type: application/json' \
-          --data '{"text":"'"${MESSAGE}"'"}' \
+          --data '{"text":"'"$MESSAGE"'"}' \
           ${{ secrets.SLACK_WEBHOOK_URL }}
 
-          # Send Email Notification using GitHub Actions Secret for Email
-          echo "Subject: Tag Alert - Invalid Base Branch\n\n${MESSAGE}" | sendmail -v ${{ secrets.NOTIFY_EMAIL }}
+          # Optional Email Notification
+          echo "Subject: GitHub Alert - Invalid Tag Creation\n\n${MESSAGE}" | sendmail -v ${{ secrets.NOTIFY_EMAIL }}
