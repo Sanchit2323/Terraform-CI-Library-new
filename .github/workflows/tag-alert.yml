@@ -1,46 +1,30 @@
 name: Notify on Tag Creation
 
 on:
-  push:
+  create:
     tags:
-      - "*"
+      - '*'
 
 jobs:
-  validate-tag:
+  notify:
     runs-on: ubuntu-latest
-
     steps:
-      # Step 1: Checkout the Repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
-
-      # Step 2: Extract Tag Name from Push Event
-      - name: Extract Tag Name
-        id: tag_name
-        run: |
-          echo "Tag Name: ${GITHUB_REF#refs/tags/}"
-          echo "TAG_NAME=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
-
-      # Step 3: Get Branch Associated with the Commit of the Tag
-      - name: Check Branch for Tag Commit
+      - name: Check if tag is created from a branch other than master
         id: check_branch
         run: |
-          TAG_COMMIT_SHA=$(git rev-parse HEAD)
-          BASE_BRANCH=$(git branch -r --contains $TAG_COMMIT_SHA | grep -v 'HEAD' | sed 's/origin\///' | head -n 1)
-          echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
-          echo "Base branch for the tag is: $BASE_BRANCH"
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            branch="${{ github.ref }}"
+            echo "Branch: $branch"
+            if [[ "${{ github.ref }}" != "refs/heads/master" ]]; then
+              echo "Tag created from a branch other than master."
+              echo "::set-output name=notify::true"
+            else
+              echo "Tag created from master."
+              echo "::set-output name=notify::false"
+            fi
+          fi
 
-      # Step 4: Notify if Tag is Not Created from 'master'
-      - name: Notify if Not master
-        if: ${{ env.BASE_BRANCH != 'master' }}
+      - name: Send Notification
+        if: steps.check_branch.outputs.notify == 'true'
         run: |
-          MESSAGE="Alert: Tag '${{ env.TAG_NAME }}' was created from branch '${{ env.BASE_BRANCH }}', not 'master'."
-          echo "$MESSAGE"
-
-          # Send Slack Notification
-          curl -X POST -H 'Content-type: application/json' \
-            --data '{"text":"'"$MESSAGE"'"}' \
-            ${{ secrets.SLACK_WEBHOOK_URL }}
-
-          # Optional Email Notification
-          echo "Subject: GitHub Tag Alert: Invalid Tag Creation\n\n${MESSAGE}" | sendmail -v ${{ secrets.NOTIFY_EMAIL }}
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"A new tag has been created from a branch other than master: '${{ github.ref }}'"}' ${{ secrets.SLACK_WEBHOOK_URL }}
