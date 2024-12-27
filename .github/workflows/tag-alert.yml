@@ -1,4 +1,4 @@
-name: Notify on Invalid Tag Creation
+name: Notify on Tag Creation
 
 on:
   push:
@@ -14,42 +14,39 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # Step 2: Extract Tag and Commit Information
-      - name: Get Tag Name and Commit SHA
+      # Step 2: Extract Tag Information
+      - name: Get Tag Name
         id: tag_info
         run: |
-          # Extract the tag name from GITHUB_REF
           TAG_NAME=${GITHUB_REF#refs/tags/}
           echo "Tag name: $TAG_NAME"
-
-          # Get the commit SHA associated with the tag
-          TAG_COMMIT_SHA=$(git rev-parse "$TAG_NAME")
-          echo "Tag commit SHA: $TAG_COMMIT_SHA"
-
           echo "TAG_NAME=$TAG_NAME" >> $GITHUB_ENV
+
+      # Step 3: Find Commit Associated with Tag
+      - name: Get Tag Commit SHA
+        id: commit_info
+        run: |
+          TAG_COMMIT_SHA=$(git rev-parse "$TAG_NAME")
+          echo "Commit SHA for the tag: $TAG_COMMIT_SHA"
           echo "TAG_COMMIT_SHA=$TAG_COMMIT_SHA" >> $GITHUB_ENV
 
-      # Step 3: Determine Base Branch
-      - name: Get Branch from Commit SHA
+      # Step 4: Get Base Branch of the Commit
+      - name: Find Base Branch
         id: branch_info
         run: |
-          # Get the branch containing the commit
-          BASE_BRANCH=$(git branch -r --contains $TAG_COMMIT_SHA | grep -v '->' | sed 's/origin\///' | head -n 1)
+          BASE_BRANCH=$(git name-rev --name-only --exclude=tags/* "${{ env.TAG_COMMIT_SHA }}")
           echo "Base branch: $BASE_BRANCH"
-
           echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
-
-          if [ -z "$BASE_BRANCH" ]; then
-            echo "Failed to determine the base branch."
+          if [[ -z "$BASE_BRANCH" || "$BASE_BRANCH" == "undefined" ]]; then
+            echo "Unable to determine the base branch."
             exit 1
           fi
 
-      # Step 4: Notify if Tag is Not Created from Master
-      - name: Notify if Not on Master
+      # Step 5: Notify if Base Branch is Not Master
+      - name: Notify if Not Master
         if: env.BASE_BRANCH != 'master'
         run: |
           MESSAGE="Alert: Tag '${{ env.TAG_NAME }}' created from branch '${{ env.BASE_BRANCH }}', not 'master'."
-
           echo "$MESSAGE"
 
           # Send Slack Notification
