@@ -1,4 +1,4 @@
-name: Tag Alert
+name: Tag Alert Mechanism
 
 on:
   push:
@@ -6,16 +6,43 @@ on:
       - "*"
 
 jobs:
-  tag-alert:
+  check-tag-origin:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      - name: Extract the Tag Name
-        id: extract-tag
+      - name: Get Tag and Branch Info
+        id: tag-info
         run: |
-          # Extract the tag name from the GitHub context
-          TAG_NAME=${GITHUB_REF#refs/tags/}
-          echo "Tag Name: $TAG_NAME"
-    
+          # Get the current tag
+          echo "TAG_NAME=$(git tag --points-at HEAD)" >> $GITHUB_ENV
+          
+          # Find the branch from which the tag is created
+          BASE_BRANCH=$(git for-each-ref --format='%(refname:short)' $(git merge-base HEAD $(git rev-list --remotes --not --all | head -1)))
+          echo "BASE_BRANCH=$BASE_BRANCH" >> $GITHUB_ENV
+
+      - name: Fail if base branch is not master
+        if: env.BASE_BRANCH != 'master'
+        run: echo "Tag created from branch: $BASE_BRANCH. Notifying stakeholders."
+
+      - name: Notify on Slack
+        if: env.BASE_BRANCH != 'master'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          slack-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: your-slack-channel-id
+          text: >
+            ⚠️ Tag `${{ env.TAG_NAME }}` created from branch `${{ env.BASE_BRANCH }}`, not master.
+
+      - name: Send Email Notification
+        if: env.BASE_BRANCH != 'master'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.EMAIL_USER }}
+          password: ${{ secrets.EMAIL_PASS }}
+          subject: "GitHub Alert: Tag Created from Non-Master Branch"
+          body: "⚠️ A tag was created from branch '${{ env.BASE_BRANCH }}', which is not the 'master' branch."
+  
